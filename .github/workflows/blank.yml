@@ -1,11 +1,12 @@
 
-name: Build LeviPack
+name: ZIP to LeviPack
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - '**.zip'
+      - '**/*.zip'
+      - '*.zip'
       - '.github/workflows/blank.yml'
 
 permissions:
@@ -19,28 +20,38 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Find and Package ZIP
+      - name: Find ZIP and Create LeviPack
         shell: bash
         run: |
           mkdir -p output
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          mapfile -d '' ZIP_FILES < <(
+            find . -type f -iname "*.zip" \
+              ! -path "./.git/*" \
+              ! -path "./output/*" \
+              -print0
+          )
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "No ZIP file found!"
+          if [ ${#ZIP_FILES[@]} -eq 0 ]; then
+            echo "ERROR: No ZIP file found in repository!"
+            find . -maxdepth 4 -type f
             exit 1
           fi
 
-          BASE_NAME=$(basename "$ZIP_FILE" .zip)
+          for ZIP in "${ZIP_FILES[@]}"; do
+            NAME=$(basename "$ZIP")
+            NAME="${NAME%.*}"
 
-          cp "$ZIP_FILE" "output/${BASE_NAME}.levipack"
+            cp "$ZIP" "output/${NAME}.levipack"
+            echo "Created: ${NAME}.levipack"
+          done
 
-          echo "Created ${BASE_NAME}.levipack"
+          ls -lh output/
 
-      - name: Upload LeviPack
+      - name: Upload LeviPack Files
         uses: actions/upload-artifact@v4
         with:
-          name: LeviPack
+          name: LeviPack-Files
           path: output/*.levipack
           if-no-files-found: error
-          
+          retention-days: 7
