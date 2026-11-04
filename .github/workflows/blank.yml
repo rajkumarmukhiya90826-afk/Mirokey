@@ -1,0 +1,46 @@
+
+name: Build LeviPack
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**.zip'
+      - '.github/workflows/blank.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Find and Package ZIP
+        shell: bash
+        run: |
+          mkdir -p output
+
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No ZIP file found!"
+            exit 1
+          fi
+
+          BASE_NAME=$(basename "$ZIP_FILE" .zip)
+
+          cp "$ZIP_FILE" "output/${BASE_NAME}.levipack"
+
+          echo "Created ${BASE_NAME}.levipack"
+
+      - name: Upload LeviPack
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeviPack
+          path: output/*.levipack
+          if-no-files-found: error
+          
